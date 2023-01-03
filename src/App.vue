@@ -65,14 +65,14 @@
           <div class="flex justify-between items-center">
             <div>
               <button
-                @click="page--"
-                :disabled="page === 1"
+                @click="page -= 1"
+                :disabled="page <= 1"
                 class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
                 Aft
               </button>
               <button
-                @click="page++"
+                @click="page += 1"
                 :disabled="!hasNextPage"
                 class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
@@ -262,6 +262,12 @@ export default {
       return this.filteredTickers.length / this.page > tikersPerPage
         ? true
         : false;
+    },
+    pageStateOptions() {
+      return {
+        filter: this.filter,
+        page: this.page
+      };
     }
   },
   methods: {
@@ -373,21 +379,14 @@ export default {
     },
     filter() {
       this.page = 1;
-      const { pathname } = window.location;
-
-      window.history.pushState(
-        null,
-        document.title,
-        `${pathname}?filter=${this.filter}&page=${this.page}`
-      );
     },
-    page() {
+    pageStateOptions(value) {
       const { pathname } = window.location;
 
       window.history.pushState(
         null,
         document.title,
-        `${pathname}?filter=${this.filter}&page=${this.page}`
+        `${pathname}?filter=${value.filter}&page=${value.page}`
       );
     }
   }
