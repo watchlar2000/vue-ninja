@@ -60,11 +60,38 @@
             Add
           </button>
         </section>
+        <hr class="w-full border-t border-gray-600 my-4" />
         <template v-if="tickers.length">
+          <div class="flex justify-between items-center">
+            <div>
+              <button
+                @click="page = page - 1"
+                :disabled="page === 1"
+                class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Aft
+              </button>
+              <button
+                @click="page++"
+                :disabled="filteredTickers().length < 6"
+                class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Fwd
+              </button>
+            </div>
+            <label>
+              Filter:
+              <input
+                v-model="filter"
+                type="text"
+                class="border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md ml-2"
+              />
+            </label>
+          </div>
           <hr class="w-full border-t border-gray-600 my-4" />
           <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div
-              v-for="(t, idx) in tickers"
+              v-for="(t, idx) in filteredTickers()"
               :key="idx"
               @click="handleSelect(t)"
               :class="{
@@ -108,7 +135,10 @@
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
             {{ sel.name }} - USD
           </h3>
-          <div class="sm:flex sm:space-x-4">
+          <div v-if="error">
+            {{ error }}
+          </div>
+          <div class="sm:flex sm:space-x-4" v-else>
             <div
               v-for="(stat, idx) in selStats"
               :key="idx"
@@ -178,7 +208,10 @@ export default {
       selStats: null,
       matches: [],
       cryptoNames: [],
-      isExisting: false
+      isExisting: false,
+      page: 1,
+      filter: "",
+      error: ""
     };
   },
   created() {
@@ -200,7 +233,15 @@ export default {
       });
   },
   methods: {
+    filteredTickers() {
+      const start = 6 * (this.page - 1);
+      const end = 6 * this.page;
+      return this.tickers
+        .filter((t) => t.name.includes(this.filter.toUpperCase()))
+        .slice(start, end);
+    },
     handleAdd() {
+      this.filter = "";
       this.isAlredyExisting();
       if (this.isExisting) return;
 
@@ -225,40 +266,47 @@ export default {
           price > 1 ? price.toFixed(2) : price.toPrecision(2);
       }, 5000);
     },
-    handleRemove(tickerToRemove) {
+    async handleRemove(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
+      localStorage.setItem("tickersList", JSON.stringify(this.tickers));
       this.sel = null;
     },
     async handleSelect(tickerSelected) {
+      this.error = "";
       this.sel = tickerSelected;
 
-      const f = await fetch(
-        `${API_URL}/generateAvg?fsym=${this.sel.name}&tsym=USD&e=Kraken&${API_KEY}`
-      );
-      const data = await f.json();
-      const { VOLUME24HOURTO, OPEN24HOUR, LOW24HOUR, HIGH24HOUR } = data.RAW;
+      try {
+        const f = await fetch(
+          `${API_URL}/generateAvg?fsym=${this.sel.name}&tsym=USD&e=Kraken&${API_KEY}`
+        );
+        const data = await f.json();
+        const { VOLUME24HOURTO, OPEN24HOUR, LOW24HOUR, HIGH24HOUR } = data.RAW;
 
-      const stats = [
-        { title: "Market Cap", price: VOLUME24HOURTO },
-        { title: "Open 24h", price: OPEN24HOUR },
-        { title: "Low 24h", price: LOW24HOUR },
-        { title: "High 24h", price: HIGH24HOUR }
-      ];
+        const stats = [
+          { title: "Market Cap", price: VOLUME24HOURTO },
+          { title: "Open 24h", price: OPEN24HOUR },
+          { title: "Low 24h", price: LOW24HOUR },
+          { title: "High 24h", price: HIGH24HOUR }
+        ];
 
-      this.selStats = stats.map((stat) => {
-        const price = stat.price;
-        return {
-          ...stat,
-          price:
-            price > 1
-              ? price > 1000
-                ? Math.abs(price) > 10000
-                  ? Math.sign(price) * (Math.abs(price) / 1000).toFixed(1) + "K"
-                  : Math.sign(price) * Math.abs(price)
-                : price.toFixed(2)
-              : price.toPrecision(2)
-        };
-      });
+        this.selStats = stats.map((stat) => {
+          const price = stat.price;
+          return {
+            ...stat,
+            price:
+              price > 1
+                ? price > 1000
+                  ? Math.abs(price) > 50000
+                    ? Math.sign(price) * (Math.abs(price) / 1000).toFixed(1) +
+                      "K"
+                    : Math.sign(price) * Math.abs(price)
+                  : price.toFixed(2)
+                : price.toPrecision(2)
+          };
+        });
+      } catch (e) {
+        this.error = "Something went wrong...";
+      }
     },
     handleMatch() {
       if (this.ticker === "") {
@@ -280,6 +328,7 @@ export default {
           : true;
     },
     resetData() {
+      this.ticker = "";
       this.matches = [];
       this.isExisting = false;
       this.matches = [];
