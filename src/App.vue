@@ -203,6 +203,8 @@ export default {
   data() {
     return {
       ticker: "",
+      filter: "",
+
       tickers: [],
       sel: null,
       selStats: null,
@@ -210,7 +212,7 @@ export default {
       cryptoNames: [],
       isExisting: false,
       page: 1,
-      filter: "",
+
       hasNextPage: true,
       error: ""
     };
@@ -224,6 +226,7 @@ export default {
     if (windowData.page) this.page = windowData.page;
 
     const tickersData = localStorage.getItem("tickersList");
+
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
       this.tickers.forEach((t) => this.subscribeToUpdates(t.name));
@@ -254,11 +257,14 @@ export default {
     },
     handleAdd() {
       this.filter = "";
-      this.isAlredyExisting();
+      this.validateInput();
       if (this.isExisting) return;
+      const name = this.ticker.toUpperCase();
+
+      if (!name) return;
 
       const currentTicker = {
-        name: this.ticker.toUpperCase(),
+        name,
         price: "-"
       };
 
@@ -331,7 +337,7 @@ export default {
         .sort()
         .slice(0, 4);
     },
-    isAlredyExisting() {
+    validateInput() {
       this.isExisting =
         this.tickers.filter(
           (ticker) => ticker.name === this.ticker.toUpperCase()
