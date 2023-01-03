@@ -65,14 +65,14 @@
           <div class="flex justify-between items-center">
             <div>
               <button
-                @click="page = page - 1"
+                @click="page--"
                 :disabled="page === 1"
                 class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
                 Aft
               </button>
               <button
-                @click="page = page + 1"
+                @click="page++"
                 :disabled="!hasNextPage"
                 class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
@@ -91,11 +91,11 @@
           <hr class="w-full border-t border-gray-600 my-4" />
           <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div
-              v-for="(t, idx) in filteredTickers()"
+              v-for="(t, idx) in paginatedTickers"
               :key="idx"
               @click="handleSelect(t)"
               :class="{
-                'border-4': sel === t
+                'border-4': selectedTicker === t
               }"
               class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
             >
@@ -131,9 +131,9 @@
           </dl>
           <hr class="w-full border-t border-gray-600 my-4" />
         </template>
-        <section v-if="sel" class="relative">
+        <section v-if="selectedTicker" class="relative">
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-            {{ sel.name }} - USD
+            {{ selectedTicker.name }} - USD
           </h3>
           <div v-if="error">
             {{ error }}
@@ -161,7 +161,7 @@
             </div>
           </div>
           <button
-            @click="sel = null"
+            @click="selectedTicker = null"
             type="button"
             class="absolute top-0 right-0"
           >
@@ -197,6 +197,7 @@
 const API_URL = "https://min-api.cryptocompare.com/data";
 const API_KEY =
   "d594f9f2d553c6aa53ba9ac39aac53f6e7f8d9ade85ef0635560f57203915fe9";
+const tikersPerPage = 6;
 
 export default {
   name: "App",
@@ -206,14 +207,13 @@ export default {
       filter: "",
 
       tickers: [],
-      sel: null,
+      selectedTicker: null,
       selStats: null,
       matches: [],
       cryptoNames: [],
       isExisting: false,
       page: 1,
 
-      hasNextPage: true,
       error: ""
     };
   },
@@ -243,18 +243,28 @@ export default {
         this.cryptoNames = names;
       });
   },
-  methods: {
+  computed: {
+    start() {
+      return tikersPerPage * (this.page - 1);
+    },
+    end() {
+      return tikersPerPage * this.page;
+    },
     filteredTickers() {
-      const tikersPerPage = 6;
-      const start = tikersPerPage * (this.page - 1);
-      const end = tikersPerPage * this.page;
-      const filteredTickers = this.tickers.filter((t) =>
+      return this.tickers.filter((t) =>
         t.name.includes(this.filter.toUpperCase())
       );
-
-      this.hasNextPage = filteredTickers.length / this.page > 6 ? true : false;
-      return filteredTickers.slice(start, end);
     },
+    paginatedTickers() {
+      return this.filteredTickers.slice(this.start, this.end);
+    },
+    hasNextPage() {
+      return this.filteredTickers.length / this.page > tikersPerPage
+        ? true
+        : false;
+    }
+  },
+  methods: {
     handleAdd() {
       this.filter = "";
       this.validateInput();
@@ -268,8 +278,8 @@ export default {
         price: "-"
       };
 
-      this.tickers.push(currentTicker);
-      localStorage.setItem("tickersList", JSON.stringify(this.tickers));
+      this.tickers = [...this.tickers, currentTicker];
+
       this.subscribeToUpdates(currentTicker.name);
       this.resetData();
     },
@@ -286,16 +296,16 @@ export default {
     },
     async handleRemove(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
-      localStorage.setItem("tickersList", JSON.stringify(this.tickers));
-      this.sel = null;
+
+      if (this.selectedTicker === tickerToRemove) this.selectedTicker = null;
     },
-    async handleSelect(tickerSelected) {
+    async handleSelect(ticker) {
       this.error = "";
-      this.sel = tickerSelected;
+      this.selectedTicker = ticker;
 
       try {
         const f = await fetch(
-          `${API_URL}/generateAvg?fsym=${this.sel.name}&tsym=USD&e=Kraken&${API_KEY}`
+          `${API_URL}/generateAvg?fsym=${this.selectedTicker.name}&tsym=USD&e=Kraken&${API_KEY}`
         );
         const data = await f.json();
         const { VOLUME24HOURTO, OPEN24HOUR, LOW24HOUR, HIGH24HOUR } = data.RAW;
@@ -353,6 +363,14 @@ export default {
     }
   },
   watch: {
+    tickers() {
+      localStorage.setItem("tickersList", JSON.stringify(this.tickers));
+    },
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page -= 1;
+      }
+    },
     filter() {
       this.page = 1;
       const { pathname } = window.location;
