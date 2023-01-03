@@ -72,8 +72,8 @@
                 Aft
               </button>
               <button
-                @click="page++"
-                :disabled="filteredTickers().length < 6"
+                @click="page = page + 1"
+                :disabled="!hasNextPage"
                 class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
                 Fwd
@@ -211,10 +211,18 @@ export default {
       isExisting: false,
       page: 1,
       filter: "",
+      hasNextPage: true,
       error: ""
     };
   },
   created() {
+    const windowData = Object.fromEntries(
+      new URL(window.location).searchParams.entries()
+    );
+
+    if (windowData.filter) this.filter = windowData.filter;
+    if (windowData.page) this.page = windowData.page;
+
     const tickersData = localStorage.getItem("tickersList");
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
@@ -234,11 +242,15 @@ export default {
   },
   methods: {
     filteredTickers() {
-      const start = 6 * (this.page - 1);
-      const end = 6 * this.page;
-      return this.tickers
-        .filter((t) => t.name.includes(this.filter.toUpperCase()))
-        .slice(start, end);
+      const tikersPerPage = 6;
+      const start = tikersPerPage * (this.page - 1);
+      const end = tikersPerPage * this.page;
+      const filteredTickers = this.tickers.filter((t) =>
+        t.name.includes(this.filter.toUpperCase())
+      );
+
+      this.hasNextPage = filteredTickers.length / this.page > 6 ? true : false;
+      return filteredTickers.slice(start, end);
     },
     handleAdd() {
       this.filter = "";
@@ -332,6 +344,27 @@ export default {
       this.matches = [];
       this.isExisting = false;
       this.matches = [];
+    }
+  },
+  watch: {
+    filter() {
+      this.page = 1;
+      const { pathname } = window.location;
+
+      window.history.pushState(
+        null,
+        document.title,
+        `${pathname}?filter=${this.filter}&page=${this.page}`
+      );
+    },
+    page() {
+      const { pathname } = window.location;
+
+      window.history.pushState(
+        null,
+        document.title,
+        `${pathname}?filter=${this.filter}&page=${this.page}`
+      );
     }
   }
 };
