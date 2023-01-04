@@ -301,7 +301,10 @@ export default {
 
       this.tickers = [...this.tickers, currentTicker];
       this.resetData();
-      subscribeToTicker(t.name, () => {});
+
+      subscribeToTicker(t.name, (newPrice) => {
+        this.updateTicker(t.name, newPrice);
+      });
     },
     formatPrice(price) {
       if (price === "-") return price;
