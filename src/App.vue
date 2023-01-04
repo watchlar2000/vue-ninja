@@ -14,7 +14,7 @@
               <div class="mt-1 relative rounded-md shadow-md">
                 <input
                   v-model="ticker"
-                  @keydown.enter="handleAdd"
+                  @keydown.enter="handleAdd()"
                   @input="handleMatch"
                   type="text"
                   name="wallet"
@@ -27,7 +27,7 @@
                 <div class="flex bg-white shadow-md p-1 rounded-md flex-wrap">
                   <span
                     v-for="(t, idx) in matches"
-                    @click="handleAdd"
+                    @click="handleAdd(t)"
                     :key="idx"
                     class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
                   >
@@ -194,6 +194,8 @@
 </template>
 
 <script>
+import { subscribeToTicker } from "./api";
+
 const API_URL = "https://min-api.cryptocompare.com/data";
 const API_KEY =
   "d594f9f2d553c6aa53ba9ac39aac53f6e7f8d9ade85ef0635560f57203915fe9";
@@ -229,8 +231,14 @@ export default {
 
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
-      this.tickers.forEach((t) => this.subscribeToUpdates(t.name));
+      this.tickers.forEach((t) =>
+        subscribeToTicker(t.name, (newPrice) => {
+          this.updateTicker(t.name, newPrice);
+        })
+      );
     }
+
+    setInterval(this.updateTickers, 5000);
   },
   mounted() {
     fetch(`${API_URL}/all/coinlist?summary=true`)
@@ -271,11 +279,18 @@ export default {
     }
   },
   methods: {
-    handleAdd() {
+    updateTicker(tickerName, price) {
+      this.tickers.forEach((t) => {
+        if (t.name === tickerName) {
+          t.price = price;
+        }
+      });
+    },
+    handleAdd(t = this.ticker) {
       this.filter = "";
       this.validateInput();
       if (this.isExisting) return;
-      const name = this.ticker.toUpperCase();
+      const name = t.toUpperCase();
 
       if (!name) return;
 
@@ -285,20 +300,20 @@ export default {
       };
 
       this.tickers = [...this.tickers, currentTicker];
-
-      this.subscribeToUpdates(currentTicker.name);
       this.resetData();
+      subscribeToTicker(t.name, () => {});
     },
-    subscribeToUpdates(tickerName) {
-      setInterval(async () => {
-        const f = await fetch(
-          `${API_URL}/price?fsym=${tickerName}&tsyms=USD&${API_KEY}`
-        );
-        const data = await f.json();
-        const price = data.USD;
-        this.tickers.find((t) => t.name === tickerName).price =
-          price > 1 ? price.toFixed(2) : price.toPrecision(2);
-      }, 5000);
+    formatPrice(price) {
+      if (price === "-") return price;
+      return price > 1 ? price.toFixed(2) : price.toPrecision(2);
+    },
+    async updateTickers() {
+      // if (!this.tickers.length) return;
+      // const exchangeData = await loadTickers(this.tickers.map((t) => t.name));
+      // this.tickers.forEach((ticker) => {
+      //   const price = exchangeData[ticker.name.toUpperCase()];
+      //   ticker.price = price ?? "-";
+      // });
     },
     async handleRemove(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
