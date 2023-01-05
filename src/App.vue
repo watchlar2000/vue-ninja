@@ -67,14 +67,14 @@
               <button
                 @click="page -= 1"
                 :disabled="page <= 1"
-                class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-40"
               >
                 Aft
               </button>
               <button
                 @click="page += 1"
                 :disabled="!hasNextPage"
-                class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                class="py-2 mr-4 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-gray-800 bg-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-40"
               >
                 Fwd
               </button>
@@ -95,9 +95,9 @@
               :key="idx"
               @click="handleSelect(t)"
               :class="{
-                'border-4': selectedTicker === t
+                'border-purple-800': selectedTicker === t
               }"
-              class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
+              class="bg-white overflow-hidden shadow rounded-lg border-4 border-transparent border-solid cursor-pointer transition-all"
             >
               <div class="px-4 py-5 sm:p-6 text-center">
                 <dt class="text-sm font-medium text-gray-500 truncate">
@@ -194,7 +194,7 @@
 </template>
 
 <script>
-import { subscribeToTicker } from "./api";
+import { subscribeToTicker, unsubscribeFromTicker } from "./api";
 
 const API_URL = "https://min-api.cryptocompare.com/data";
 const API_KEY =
@@ -302,8 +302,8 @@ export default {
       this.tickers = [...this.tickers, currentTicker];
       this.resetData();
 
-      subscribeToTicker(t.name, (newPrice) => {
-        this.updateTicker(t.name, newPrice);
+      subscribeToTicker(name, (newPrice) => {
+        this.updateTicker(name, newPrice);
       });
     },
     formatPrice(price) {
@@ -322,6 +322,7 @@ export default {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
 
       if (this.selectedTicker === tickerToRemove) this.selectedTicker = null;
+      unsubscribeFromTicker(tickerToRemove.name);
     },
     async handleSelect(ticker) {
       this.error = "";
@@ -348,7 +349,7 @@ export default {
             price:
               price > 1
                 ? price > 1000
-                  ? Math.abs(price) > 50000
+                  ? Math.abs(price) > 10000
                     ? Math.sign(price) * (Math.abs(price) / 1000).toFixed(1) +
                       "K"
                     : Math.sign(price) * Math.abs(price)
@@ -410,3 +411,5 @@ export default {
   }
 };
 </script>
+
+<style scoped></style>
