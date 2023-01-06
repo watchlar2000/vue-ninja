@@ -97,20 +97,26 @@
               :class="{
                 'border-purple-800': selectedTicker === t
               }"
-              class="bg-white overflow-hidden shadow rounded-lg border-4 border-transparent border-solid cursor-pointer transition-all"
+              class="bg-white overflow-hidden shadow rounded-lg border-4 border-transparent border-solid cursor-pointer transition-all flex-col h-full"
             >
               <div class="px-4 py-5 sm:p-6 text-center">
                 <dt class="text-sm font-medium text-gray-500 truncate">
                   {{ t.name }} - USD
                 </dt>
-                <dd class="mt-1 text-3xl font-semibold text-gray-900">
+                <dd
+                  class="mt-1 text-3xl font-semibold text-gray-900"
+                  v-if="t.price"
+                >
                   {{ t.price }}
+                </dd>
+                <dd class="mt-1 text-3xl font-semibold text-gray-900" v-else>
+                  -
                 </dd>
               </div>
               <div class="w-full border-t border-gray-200"></div>
               <button
                 @click.stop="handleRemove(t)"
-                class="flex items-center justify-center font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-black hover:bg-gray-200 transition-all focus:outline-none"
+                class="flex items-center justify-center self-end font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-black hover:bg-gray-200 transition-all focus:outline-none"
               >
                 <svg
                   class="h-5 w-5"
@@ -140,7 +146,7 @@
           </div>
           <div class="sm:flex sm:space-x-4" v-else>
             <div
-              v-for="(stat, idx) in selStats"
+              v-for="(stat, idx) in selectedTickerTradingInfo"
               :key="idx"
               class="inline-block bg-white rounded-lg text-left overflow-hidden shadow transform transition-all mb-1 w-full sm:w-1/3 sm:my-8"
             >
@@ -194,11 +200,13 @@
 </template>
 
 <script>
-import { subscribeToTicker, unsubscribeFromTicker } from "./api";
+import {
+  subscribeToTicker,
+  unsubscribeFromTicker,
+  getTickerTradingInfo,
+  getFullTickersList
+} from "./api";
 
-const API_URL = "https://min-api.cryptocompare.com/data";
-const API_KEY =
-  "d594f9f2d553c6aa53ba9ac39aac53f6e7f8d9ade85ef0635560f57203915fe9";
 const tikersPerPage = 6;
 
 export default {
@@ -210,9 +218,9 @@ export default {
 
       tickers: [],
       selectedTicker: null,
-      selStats: null,
+      selectedTickerTradingInfo: null,
       matches: [],
-      cryptoNames: [],
+      fullTickersList: [],
       isExisting: false,
       page: 1,
 
@@ -237,19 +245,9 @@ export default {
         })
       );
     }
-
-    setInterval(this.updateTickers, 5000);
   },
-  mounted() {
-    fetch(`${API_URL}/all/coinlist?summary=true`)
-      .then((res) => res.json())
-      .then((data) => {
-        const names = [];
-        for (const key of Object.entries(data.Data)) {
-          names.push(key[0]);
-        }
-        this.cryptoNames = names;
-      });
+  async mounted() {
+    this.fullTickersList = await getFullTickersList();
   },
   computed: {
     start() {
@@ -308,15 +306,14 @@ export default {
     },
     formatPrice(price) {
       if (price === "-") return price;
-      return price > 1 ? price.toFixed(2) : price.toPrecision(2);
-    },
-    async updateTickers() {
-      // if (!this.tickers.length) return;
-      // const exchangeData = await loadTickers(this.tickers.map((t) => t.name));
-      // this.tickers.forEach((ticker) => {
-      //   const price = exchangeData[ticker.name.toUpperCase()];
-      //   ticker.price = price ?? "-";
-      // });
+      // return price > 1 ? price.toFixed(2) : price.toPrecision(2);
+      return price > 1
+        ? price > 1000
+          ? Math.abs(price) > 99999
+            ? Math.sign(price) * (Math.abs(price) / 1000).toFixed(1) + "K"
+            : Math.sign(price) * Math.abs(price)
+          : price.toFixed(2)
+        : price.toPrecision(2);
     },
     async handleRemove(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
@@ -329,32 +326,21 @@ export default {
       this.selectedTicker = ticker;
 
       try {
-        const f = await fetch(
-          `${API_URL}/generateAvg?fsym=${this.selectedTicker.name}&tsym=USD&e=Kraken&${API_KEY}`
-        );
-        const data = await f.json();
-        const { VOLUME24HOURTO, OPEN24HOUR, LOW24HOUR, HIGH24HOUR } = data.RAW;
+        const { VOLUME24HOURTO, OPEN24HOUR, LOW24HOUR, HIGH24HOUR } =
+          await getTickerTradingInfo(ticker.name);
 
-        const stats = [
+        const tickerTradingInfo = [
           { title: "Market Cap", price: VOLUME24HOURTO },
           { title: "Open 24h", price: OPEN24HOUR },
           { title: "Low 24h", price: LOW24HOUR },
           { title: "High 24h", price: HIGH24HOUR }
         ];
 
-        this.selStats = stats.map((stat) => {
+        this.selectedTickerTradingInfo = tickerTradingInfo.map((stat) => {
           const price = stat.price;
           return {
             ...stat,
-            price:
-              price > 1
-                ? price > 1000
-                  ? Math.abs(price) > 10000
-                    ? Math.sign(price) * (Math.abs(price) / 1000).toFixed(1) +
-                      "K"
-                    : Math.sign(price) * Math.abs(price)
-                  : price.toFixed(2)
-                : price.toPrecision(2)
+            price: this.formatPrice(price)
           };
         });
       } catch (e) {
@@ -367,7 +353,7 @@ export default {
         return;
       }
       const reg = new RegExp("^" + this.ticker.trim(), "i");
-      this.matches = this.cryptoNames
+      this.matches = this.fullTickersList
         .filter((name) => reg.test(name))
         .sort()
         .slice(0, 4);

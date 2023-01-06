@@ -1,4 +1,4 @@
-// const API_BASE_URL = "https://min-api.cryptocompare.com";
+const API_BASE_URL = "https://min-api.cryptocompare.com";
 const API_KEY =
   "39acd117e12a4166d8ec5eb74c62865953e5e60c241a66c9c8030140f7de9170";
 
@@ -65,6 +65,20 @@ export const unsubscribeFromTicker = (ticker) => {
   // );
   tickersHandlers.delete(ticker);
   unsubscribeFromTickerOnWs(ticker);
+};
+
+export const getTickerTradingInfo = async (tickerName) => {
+  const res = await fetch(
+    `${API_BASE_URL}/data/generateAvg?fsym=${tickerName}&tsym=USD&e=Kraken&api_key=${API_KEY}`
+  );
+  const tradingInfo = await res.json();
+  return tradingInfo.RAW;
+};
+
+export const getFullTickersList = async () => {
+  const res = await fetch(`${API_BASE_URL}/data/all/coinlist?summary=true`);
+  const { Data: fullTickersList } = await res.json();
+  return Object.keys(fullTickersList);
 };
 
 window.tickers = tickersHandlers;
