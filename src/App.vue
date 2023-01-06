@@ -95,9 +95,10 @@
               :key="idx"
               @click="handleSelect(t)"
               :class="{
-                'border-purple-800': selectedTicker === t
+                'border-purple-800': selectedTicker === t,
+                'bg-red-100': t.price === 'invalid'
               }"
-              class="bg-white overflow-hidden shadow rounded-lg border-4 border-transparent border-solid cursor-pointer transition-all flex-col h-full"
+              class="bg-white overflow-hidden shadow rounded-lg border-4 border-transparent border-solid cursor-pointer transition-all"
             >
               <div class="px-4 py-5 sm:p-6 text-center">
                 <dt class="text-sm font-medium text-gray-500 truncate">
@@ -105,18 +106,21 @@
                 </dt>
                 <dd
                   class="mt-1 text-3xl font-semibold text-gray-900"
+                  :class="{
+                    'text-red-700': t.price === 'invalid'
+                  }"
                   v-if="t.price"
                 >
                   {{ t.price }}
                 </dd>
-                <dd class="mt-1 text-3xl font-semibold text-gray-900" v-else>
-                  -
+                <dd class="mt-1 text-3xl font-normal text-gray-300" v-else>
+                  updating...
                 </dd>
               </div>
               <div class="w-full border-t border-gray-200"></div>
               <button
                 @click.stop="handleRemove(t)"
-                class="flex items-center justify-center self-end font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-black hover:bg-gray-200 transition-all focus:outline-none"
+                class="flex items-center justify-center font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-black hover:bg-gray-200 transition-all focus:outline-none"
               >
                 <svg
                   class="h-5 w-5"
@@ -397,5 +401,3 @@ export default {
   }
 };
 </script>
-
-<style scoped></style>
