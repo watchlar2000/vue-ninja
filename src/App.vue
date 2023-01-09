@@ -27,7 +27,7 @@
                 <div class="flex bg-white shadow-md p-1 rounded-md flex-wrap">
                   <span
                     v-for="(t, idx) in matches"
-                    @click="handleAdd(t)"
+                    @click="handleAdd()"
                     :key="idx"
                     class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
                   >
@@ -35,8 +35,8 @@
                   </span>
                 </div>
               </template>
-              <div class="text-sm text-red-600" v-if="this.isExisting">
-                The ticker you selected is already in the list
+              <div class="text-sm text-red-600" v-if="this.dangerMsg !== ''">
+                {{ dangerMsg }}
               </div>
             </div>
           </div>
@@ -226,11 +226,13 @@ export default {
       matches: [],
       fullTickersList: [],
       isExisting: false,
+      dangerMsg: "",
       page: 1,
 
       error: ""
     };
   },
+
   created() {
     const windowData = Object.fromEntries(
       new URL(window.location).searchParams.entries()
@@ -288,13 +290,24 @@ export default {
         }
       });
     },
-    handleAdd(t = this.ticker) {
+    handleAdd() {
       this.filter = "";
       this.validateInput();
-      if (this.isExisting) return;
-      const name = t.toUpperCase();
 
-      if (!name) return;
+      console.log(this.isExisting, this.ticker);
+
+      if (this.isExisting) {
+        this.dangerMsg = "The ticker you selected is already in the list";
+        return;
+      }
+
+      if (this.ticker === "") {
+        console.log();
+        this.dangerMsg = "Please fill in the input first";
+        return;
+      }
+
+      const name = this.ticker.toUpperCase();
 
       const currentTicker = {
         name,
@@ -310,7 +323,6 @@ export default {
     },
     formatPrice(price) {
       if (price === "-") return price;
-      // return price > 1 ? price.toFixed(2) : price.toPrecision(2);
       return price > 1
         ? price > 1000
           ? Math.abs(price) > 99999
@@ -374,6 +386,7 @@ export default {
       this.ticker = "";
       this.matches = [];
       this.isExisting = false;
+      this.dangerMsg = "";
       this.matches = [];
     }
   },
