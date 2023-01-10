@@ -3,7 +3,12 @@
     <div class="container mx-auto flex flex-col items-center p-4">
       <div class="container">
         <div class="w-full my-4"></div>
-        <section>
+        <add-ticker
+          @add-ticker="handleAdd"
+          :dangerMsg="dangerMsg"
+          :matches="matches"
+        />
+        <!-- <section>
           <div class="flex">
             <div class="max-w-xs">
               <label
@@ -59,8 +64,9 @@
             </svg>
             Add
           </button>
-        </section>
-        <hr class="w-full border-t border-gray-600 my-4" />
+        </section> -->
+
+        <horizontal-line />
         <template v-if="tickers.length">
           <div class="flex justify-between items-center">
             <div>
@@ -88,7 +94,7 @@
               />
             </label>
           </div>
-          <hr class="w-full border-t border-gray-600 my-4" />
+          <horizontal-line />
           <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div
               v-for="(t, idx) in paginatedTickers"
@@ -139,7 +145,7 @@
               </button>
             </div>
           </dl>
-          <hr class="w-full border-t border-gray-600 my-4" />
+          <horizontal-line />
         </template>
         <section v-if="selectedTicker" class="relative">
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
@@ -210,16 +216,21 @@ import {
   getTickerTradingInfo,
   getFullTickersList
 } from "./api";
+import AddTicker from "./components/AddTicker.vue";
+import HorizontalLine from "./components/HorizontalLine.vue";
 
 const tikersPerPage = 6;
 
 export default {
   name: "App",
+  components: {
+    AddTicker,
+    HorizontalLine
+  },
   data() {
     return {
-      ticker: "",
+      // ticker: "",
       filter: "",
-
       tickers: [],
       selectedTicker: null,
       selectedTickerTradingInfo: null,
@@ -228,7 +239,6 @@ export default {
       isExisting: false,
       dangerMsg: "",
       page: 1,
-
       error: ""
     };
   },
@@ -290,27 +300,24 @@ export default {
         }
       });
     },
-    handleAdd() {
+    handleAdd(ticker) {
       this.filter = "";
-      this.validateInput();
+      this.validateInput(ticker);
 
-      console.log(this.isExisting, this.ticker);
+      // console.log(this.isExisting, ticker);
 
       if (this.isExisting) {
         this.dangerMsg = "The ticker you selected is already in the list";
         return;
       }
 
-      if (this.ticker === "") {
-        console.log();
+      if (ticker === "") {
         this.dangerMsg = "Please fill in the input first";
         return;
       }
 
-      const name = this.ticker.toUpperCase();
-
       const currentTicker = {
-        name,
+        name: ticker,
         price: "-"
       };
 
@@ -374,11 +381,10 @@ export default {
         .sort()
         .slice(0, 4);
     },
-    validateInput() {
+    validateInput(currentTicker) {
       this.isExisting =
-        this.tickers.filter(
-          (ticker) => ticker.name === this.ticker.toUpperCase()
-        ).length === 0
+        this.tickers.filter((ticker) => ticker.name === currentTicker)
+          .length === 0
           ? false
           : true;
     },
