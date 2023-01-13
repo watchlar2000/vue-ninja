@@ -70,11 +70,6 @@ export const subscribeToTicker = (ticker, cb) => {
 };
 
 export const unsubscribeFromTicker = (ticker) => {
-  // const subscribers = tickersHandlers.get(ticker) || [];
-  // tickersHandlers.set(
-  //   ticker,
-  //   subscribers.filter((fn) => fn !== cb)
-  // );
   tickersHandlers.delete(ticker);
   unsubscribeFromTickerOnWs(ticker);
 };
