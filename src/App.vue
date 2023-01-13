@@ -8,64 +8,6 @@
           :dangerMsg="dangerMsg"
           :matches="matches"
         />
-        <!-- <section>
-          <div class="flex">
-            <div class="max-w-xs">
-              <label
-                for="wallet"
-                class="block text-sm font-medium text-gray-700"
-                >Ticker</label
-              >
-              <div class="mt-1 relative rounded-md shadow-md">
-                <input
-                  v-model="ticker"
-                  @keydown.enter="handleAdd()"
-                  @input="handleMatch"
-                  type="text"
-                  name="wallet"
-                  id="wallet"
-                  class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
-                  placeholder="e.g. BTC"
-                />
-              </div>
-              <template v-if="matches.length > 0">
-                <div class="flex bg-white shadow-md p-1 rounded-md flex-wrap">
-                  <span
-                    v-for="(t, idx) in matches"
-                    @click="handleAdd()"
-                    :key="idx"
-                    class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-                  >
-                    {{ t }}
-                  </span>
-                </div>
-              </template>
-              <div class="text-sm text-red-600" v-if="this.dangerMsg !== ''">
-                {{ dangerMsg }}
-              </div>
-            </div>
-          </div>
-          <button
-            @click="handleAdd"
-            type="button"
-            class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-          >
-            <svg
-              class="-ml-0.5 mr-2 h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              width="30"
-              height="30"
-              viewBox="0 0 24 24"
-              fill="#ffffff"
-            >
-              <path
-                d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-              ></path>
-            </svg>
-            Add
-          </button>
-        </section> -->
-
         <horizontal-line />
         <template v-if="tickers.length">
           <div class="flex justify-between items-center">
@@ -147,14 +89,12 @@
           </dl>
           <horizontal-line />
         </template>
-        <section v-if="selectedTicker" class="relative">
+        <section v-if="selectedTicker && !showErrorPopup" class="relative">
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
             {{ selectedTicker.name }} - USD
           </h3>
-          <div v-if="error">
-            {{ error }}
-          </div>
-          <div class="sm:flex sm:space-x-4" v-else>
+
+          <div class="sm:flex sm:space-x-4">
             <div
               v-for="(stat, idx) in selectedTickerTradingInfo"
               :key="idx"
@@ -204,6 +144,9 @@
             </svg>
           </button>
         </section>
+        <error-popup v-if="showErrorPopup"
+          >Selected ticker is not valid</error-popup
+        >
       </div>
     </div>
   </div>
@@ -218,6 +161,7 @@ import {
 } from "./api";
 import AddTicker from "./components/AddTicker.vue";
 import HorizontalLine from "./components/HorizontalLine.vue";
+import ErrorPopup from "./components/ErrorPopup.vue";
 
 const tikersPerPage = 6;
 
@@ -225,21 +169,23 @@ export default {
   name: "App",
   components: {
     AddTicker,
-    HorizontalLine
+    HorizontalLine,
+    ErrorPopup
   },
   data() {
     return {
-      // ticker: "",
       filter: "",
       tickers: [],
+
       selectedTicker: null,
       selectedTickerTradingInfo: null,
+
       matches: [],
       fullTickersList: [],
       isExisting: false,
       dangerMsg: "",
-      page: 1,
-      error: ""
+
+      page: 1
     };
   },
 
@@ -266,6 +212,10 @@ export default {
     this.fullTickersList = await getFullTickersList();
   },
   computed: {
+    showErrorPopup() {
+      if (!this.selectedTicker) return false;
+      return this.selectedTicker.price === "invalid";
+    },
     start() {
       return tikersPerPage * (this.page - 1);
     },
@@ -303,8 +253,6 @@ export default {
     handleAdd(ticker) {
       this.filter = "";
       this.validateInput(ticker);
-
-      // console.log(this.isExisting, ticker);
 
       if (this.isExisting) {
         this.dangerMsg = "The ticker you selected is already in the list";
@@ -345,12 +293,13 @@ export default {
       unsubscribeFromTicker(tickerToRemove.name);
     },
     async handleSelect(ticker) {
-      this.error = "";
+      await this.setTradingInfo(ticker.name);
       this.selectedTicker = ticker;
-
+    },
+    async setTradingInfo(tickerName) {
       try {
         const { VOLUME24HOURTO, OPEN24HOUR, LOW24HOUR, HIGH24HOUR } =
-          await getTickerTradingInfo(ticker.name);
+          await getTickerTradingInfo(tickerName);
 
         const tickerTradingInfo = [
           { title: "Market Cap", price: VOLUME24HOURTO },
@@ -367,7 +316,7 @@ export default {
           };
         });
       } catch (e) {
-        this.error = "Something went wrong...";
+        this.selectedTickerTradingInfo = null;
       }
     },
     handleMatch() {
